@@ -182,6 +182,44 @@ TEST(ToplogyTest, TestDisableDeviceRemovesLocalHcaAffinityCandidate) {
               disabled_index);
 }
 
+TEST(ToplogyTest, TestDisableDeviceRemovesAllDuplicateNames) {
+    mooncake::Topology topology;
+    ASSERT_EQ(topology.parse(
+                  "{\"cpu:0\":[[\"mlx5_0\",\"mlx5_1\",\"mlx5_0\"],"
+                  "[\"mlx5_0\",\"mlx5_2\",\"mlx5_0\"]],"
+                  "\"cpu:1\":[[\"mlx5_0\",\"mlx5_0\"],"
+                  "[\"mlx5_0\",\"mlx5_0\"]]}"),
+              0);
+    const int preferred = topology.getDeviceIndex("cpu:0", "mlx5_1");
+    const int available = topology.getDeviceIndex("cpu:0", "mlx5_2");
+    ASSERT_GE(preferred, 0);
+    ASSERT_GE(available, 0);
+
+    ASSERT_EQ(topology.disableDevice("mlx5_0"), 0);
+    for (const auto &[location, entry] : topology.getMatrix()) {
+        EXPECT_EQ(std::count(entry.preferred_hca.begin(),
+                             entry.preferred_hca.end(), "mlx5_0"),
+                  0);
+        EXPECT_EQ(std::count(entry.avail_hca.begin(), entry.avail_hca.end(),
+                             "mlx5_0"),
+                  0);
+    }
+    EXPECT_EQ(topology.getDeviceIndex("cpu:0", "mlx5_1"), preferred);
+    EXPECT_EQ(topology.getDeviceIndex("cpu:0", "mlx5_2"), available);
+    EXPECT_EQ(topology.selectDevice("cpu:1"), ERR_DEVICE_NOT_FOUND);
+
+    // Published topology must not make a disabled HCA selectable again.
+    mooncake::Topology peer_topology;
+    ASSERT_EQ(peer_topology.parse(topology.toString()), 0);
+    EXPECT_EQ(peer_topology.getDeviceIndex(mooncake::kWildcardLocation, "mlx5_0"),
+              ERR_DEVICE_NOT_FOUND);
+    EXPECT_EQ(peer_topology.selectDevice("cpu:1"), ERR_DEVICE_NOT_FOUND);
+
+    const auto serialized = topology.toString();
+    ASSERT_EQ(topology.disableDevice("mlx5_0"), 0);
+    EXPECT_EQ(topology.toString(), serialized);
+}
+
 // HCA peer affinity must key off GPU_PREFIX (cuda:/hip:/...), not a
 // hardcoded "cuda:" string — otherwise USE_HIP builds never resolve affinity
 // for discovered hip:N topology entries.
