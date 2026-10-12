@@ -872,9 +872,9 @@ int Topology::disableDevice(const std::string &device_name) {
 
     for (auto &record : matrix_) {
         auto &preferred_hca = record.second.preferred_hca;
-        preferred_hca.erase(
-            std::remove(preferred_hca.begin(), preferred_hca.end(), device_name),
-            preferred_hca.end());
+        preferred_hca.erase(std::remove(preferred_hca.begin(),
+                                        preferred_hca.end(), device_name),
+                            preferred_hca.end());
         auto &avail_hca = record.second.avail_hca;
         avail_hca.erase(
             std::remove(avail_hca.begin(), avail_hca.end(), device_name),

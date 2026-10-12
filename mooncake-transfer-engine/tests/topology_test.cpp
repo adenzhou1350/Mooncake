@@ -184,11 +184,10 @@ TEST(ToplogyTest, TestDisableDeviceRemovesLocalHcaAffinityCandidate) {
 
 TEST(ToplogyTest, TestDisableDeviceRemovesAllDuplicateNames) {
     mooncake::Topology topology;
-    ASSERT_EQ(topology.parse(
-                  "{\"cpu:0\":[[\"mlx5_0\",\"mlx5_1\",\"mlx5_0\"],"
-                  "[\"mlx5_0\",\"mlx5_2\",\"mlx5_0\"]],"
-                  "\"cpu:1\":[[\"mlx5_0\",\"mlx5_0\"],"
-                  "[\"mlx5_0\",\"mlx5_0\"]]}"),
+    ASSERT_EQ(topology.parse("{\"cpu:0\":[[\"mlx5_0\",\"mlx5_1\",\"mlx5_0\"],"
+                             "[\"mlx5_0\",\"mlx5_2\",\"mlx5_0\"]],"
+                             "\"cpu:1\":[[\"mlx5_0\",\"mlx5_0\"],"
+                             "[\"mlx5_0\",\"mlx5_0\"]]}"),
               0);
     const int preferred = topology.getDeviceIndex("cpu:0", "mlx5_1");
     const int available = topology.getDeviceIndex("cpu:0", "mlx5_2");
@@ -211,8 +210,9 @@ TEST(ToplogyTest, TestDisableDeviceRemovesAllDuplicateNames) {
     // Published topology must not make a disabled HCA selectable again.
     mooncake::Topology peer_topology;
     ASSERT_EQ(peer_topology.parse(topology.toString()), 0);
-    EXPECT_EQ(peer_topology.getDeviceIndex(mooncake::kWildcardLocation, "mlx5_0"),
-              ERR_DEVICE_NOT_FOUND);
+    EXPECT_EQ(
+        peer_topology.getDeviceIndex(mooncake::kWildcardLocation, "mlx5_0"),
+        ERR_DEVICE_NOT_FOUND);
     EXPECT_EQ(peer_topology.selectDevice("cpu:1"), ERR_DEVICE_NOT_FOUND);
 
     const auto serialized = topology.toString();
